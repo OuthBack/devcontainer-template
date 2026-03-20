@@ -1,0 +1,21 @@
+// .devcontainer/devcontainer.json
+{
+  "image": "debian:stable-slim",
+  "build": {
+    "context": ".."
+  },
+  "mounts": [
+    "source=${env:HOME}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached,readonly=false",
+    "source=${env:HOME}/.ssh,target=/root/.ssh,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/.git,target=${containerWorkspaceFolder}/.git,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": [
+      "/bin/sh",
+      "-c",
+      "{ echo '--- New Run: $(date) ---'; /bin/sh ./.devcontainer/install.sh; } >> ./.devcontainer/postcreate.log 2>&1 || true && grep -qF '_container_rprompt' ~/.zshrc 2>/dev/null || cat >> ~/.zshrc << 'EOF'\n\nfunction _is_in_container() {\n  [[ -n \"$REMOTE_CONTAINERS\" ]] && return 0\n  grep -qE \"docker|container|lxc\" /proc/1/cgroup 2>/dev/null\n}\nfunction _container_prompt() {\n  _is_in_container && echo \"%F{cyan}🐳 devcontainer%f \"\n}\nPROMPT='$(_container_prompt)'\"$PROMPT\"\nalias vim='nvim'\nEOF"
+  ],
+  "features": {
+      "ghcr.io/devcontainers/features/git:1": {},
+      "ghcr.io/devcontainers/features/rust:1": {}
+  }
+}
