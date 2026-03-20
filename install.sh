@@ -19,6 +19,19 @@ apt -y install ripgrep
 # Fuzzy finder
 apt -y install fzf
 
+# SSH
+apt -y install openssh-client openssh-server
+cp -r /tmp/host-ssh /root/.ssh
+cp /tmp/host-ssh/id_ed25519 /root/.ssh/
+cp /tmp/host-ssh/id_rsa /root/.ssh/
+cp /tmp/host-ssh/known_hosts /root/.ssh/
+chown -R root:root /root/.ssh
+chmod 700 /root/.ssh 
+chmod 600 /root/.ssh/*
+
+# XClip
+apt -y install xclip
+
 # ZSH
 apt -y install zsh
 chsh -s $(which zsh)

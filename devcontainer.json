@@ -6,7 +6,7 @@
   },
   "mounts": [
     "source=${env:HOME}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached,readonly=false",
-    "source=${env:HOME}/.ssh,target=/root/.ssh,type=bind,consistency=cached",
+    "source=${env:HOME}/.ssh,target=/tmp/host-ssh,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.git,target=${containerWorkspaceFolder}/.git,type=bind,consistency=cached"
   ],
   "postCreateCommand": [
