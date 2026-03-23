@@ -7,8 +7,14 @@
   "mounts": [
     "source=${env:HOME}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached,readonly=false",
     "source=${env:HOME}/.ssh,target=/tmp/host-ssh,type=bind,consistency=cached",
-    "source=${localWorkspaceFolder}/.git,target=${containerWorkspaceFolder}/.git,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder}/.git,target=${containerWorkspaceFolder}/.git,type=bind,consistency=cached",
+    "source=${env:XDG_RUNTIME_DIR}/${env:WAYLAND_DISPLAY},target=${env:XDG_RUNTIME_DIR}/${env:WAYLAND_DISPLAY},type=bind,consistency=cached"
   ],
+  "containerEnv": {
+    "WAYLAND_DISPLAY": "${localEnv:WAYLAND_DISPLAY}",
+    "XDG_RUNTIME_DIR": "${localEnv:XDG_RUNTIME_DIR}"
+  },
+  "appPort": [3000, 8080, 5432],
   "postCreateCommand": [
       "/bin/sh",
       "-c",
@@ -17,5 +23,6 @@
   "features": {
       "ghcr.io/devcontainers/features/git:1": {},
       "ghcr.io/devcontainers/features/node:1": {}
-  }
+  },
+  "runArgs": ["--network=mysql_net"]
 }

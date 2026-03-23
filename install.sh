@@ -29,9 +29,6 @@ chown -R root:root /root/.ssh
 chmod 700 /root/.ssh 
 chmod 600 /root/.ssh/*
 
-# XClip
-apt -y install xclip
-
 # ZSH
 apt -y install zsh
 chsh -s $(which zsh)
@@ -51,3 +48,10 @@ git clone --depth 1 https://github.com/wbthomason/packer.nvim\
 
 git clone https://github.com/OuthBack/neovim-config.git ~/.config/nvim
 git config --global --add safe.directory $(pwd)
+
+# NPM
+npm install -g typescript-language-server typescript tree-sitter-cli
+
+# Clear
+rm nvim-linux-x86_64.tar.gz
+
