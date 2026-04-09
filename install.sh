@@ -50,7 +50,7 @@ git clone https://github.com/OuthBack/neovim-config.git ~/.config/nvim
 git config --global --add safe.directory $(pwd)
 
 # NPM
-npm install -g typescript-language-server typescript tree-sitter-cli
+npm install -g typescript-language-server typescript tree-sitter-cli @google/gemini-cli
 
 # Clear
 rm nvim-linux-x86_64.tar.gz
