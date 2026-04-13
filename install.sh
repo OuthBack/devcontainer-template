@@ -1,4 +1,9 @@
 cat /etc/os-release
+
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+
+cat /etc/resolv.conf
+
 apt -y update
 
 # CURL
