@@ -19,6 +19,9 @@ apt -y install ripgrep
 # Fuzzy finder
 apt -y install fzf
 
+# Tree Sitter
+apt -y install tree-sitter-cli
+
 # SSH
 apt -y install openssh-client openssh-server
 cp -r /tmp/host-ssh /root/.ssh
