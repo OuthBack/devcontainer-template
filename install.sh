@@ -48,9 +48,6 @@ tar -C /opt -xzf nvim-linux-x86_64.tar.gz
 
 echo 'export PATH="$PATH:/opt/nvim-linux-x86_64/bin"' >> ~/.zshrc 
 
-git clone --depth 1 https://github.com/wbthomason/packer.nvim\
- ~/.local/share/nvim/site/pack/packer/start/packer.nvim
-
 git clone https://github.com/OuthBack/neovim-config.git ~/.config/nvim
 git config --global --add safe.directory $(pwd)
 
