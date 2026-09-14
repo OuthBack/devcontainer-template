@@ -24,6 +24,9 @@ apt -y install ripgrep
 # Fuzzy finder
 apt -y install fzf
 
+# Wl-clipboard
+apt -y install wl-clipboard
+
 # SSH
 apt -y install openssh-client openssh-server
 cp -r /tmp/host-ssh /root/.ssh
@@ -47,6 +50,7 @@ rm -rf /opt/nvim-linux-x86_64
 tar -C /opt -xzf nvim-linux-x86_64.tar.gz
 
 echo 'export PATH="$PATH:/opt/nvim-linux-x86_64/bin"' >> ~/.zshrc 
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 
 git clone https://github.com/OuthBack/neovim-config.git ~/.config/nvim
 git config --global --add safe.directory $(pwd)
@@ -54,6 +58,13 @@ git config --global --add safe.directory $(pwd)
 # NPM
 npm install -g typescript-language-server typescript tree-sitter-cli @google/gemini-cli
 
+# Claude
+curl -fsSL https://claude.ai/install.sh | bash
+
 # Clear
 rm nvim-linux-x86_64.tar.gz
 
+# DNS binding
+# echo "172.19.0.3 dynamodb" >> /etc/hosts
+# echo "172.19.0.4 dynamodb-admin" >> /etc/hosts
+# echo "172.19.0.2 pgadmin" >> /etc/hosts
