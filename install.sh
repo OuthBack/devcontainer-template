@@ -51,6 +51,7 @@ tar -C /opt -xzf nvim-linux-x86_64.tar.gz
 
 echo 'export PATH="$PATH:/opt/nvim-linux-x86_64/bin"' >> ~/.zshrc 
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+echo 'eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519' >> ~/.zshrc
 
 git clone https://github.com/OuthBack/neovim-config.git ~/.config/nvim
 git config --global --add safe.directory $(pwd)
