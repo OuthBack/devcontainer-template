@@ -64,6 +64,8 @@ curl -fsSL https://claude.ai/install.sh | bash
 # Clear
 rm nvim-linux-x86_64.tar.gz
 
+eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
+
 # DNS binding
 # echo "172.19.0.3 dynamodb" >> /etc/hosts
 # echo "172.19.0.4 dynamodb-admin" >> /etc/hosts
