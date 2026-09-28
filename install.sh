@@ -69,3 +69,5 @@ rm nvim-linux-x86_64.tar.gz
 # echo "172.19.0.3 dynamodb" >> /etc/hosts
 # echo "172.19.0.4 dynamodb-admin" >> /etc/hosts
 # echo "172.19.0.2 pgadmin" >> /etc/hosts
+# echo "172.18.0.2 mysql" >> /etc/hosts
+

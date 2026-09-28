@@ -15,17 +15,22 @@
     "XDG_RUNTIME_DIR": "${localEnv:XDG_RUNTIME_DIR}",
     "TERM": "xterm-256color",
     "COLORTERM": "truecolor",
-    "NO_BROWSER": "true"
+    "NO_BROWSER": "true",
+    "TUNNEL_USER": "${localEnv:USER}",
+    "TUNNEL_SSH_OPTS": "-i /tmp/host-ssh/devcontainer_tunnel -o IdentitiesOnly=yes"
   },
-  "appPort": [3000, 8080, 5432],
+  "appPort": [],
   "postCreateCommand": [
     "/bin/sh",
     "-c",
     "{ echo '--- New Run: $(date) ---'; /bin/sh ./.devcontainer/install.sh; } >> ./.devcontainer/postcreate.log 2>&1 || true && grep -qF '_container_rprompt' ~/.zshrc 2>/dev/null || cat >> ~/.zshrc << 'EOF'\n\nfunction _is_in_container() {\n  [[ -n \"$REMOTE_CONTAINERS\" ]] && return 0\n  grep -qE \"docker|container|lxc\" /proc/1/cgroup 2>/dev/null\n}\nfunction _container_prompt() {\n  _is_in_container && echo \"%F{cyan}🐳 devcontainer%f \"\n}\nPROMPT='$(_container_prompt)'\"$PROMPT\"\nalias vim='nvim'\nEOF"
   ],
+  "postStartCommand": "{ echo \"--- New Run: $(date) ---\"; } >> ${containerWorkspaceFolder}/.devcontainer/port-watch-ssh.log; setsid nohup bash ${containerWorkspaceFolder}/.devcontainer/port-watch-ssh.sh >> ${containerWorkspaceFolder}/.devcontainer/port-watch-ssh.log 2>&1 &",
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/node:1": {}
+    "ghcr.io/devcontainers/features/node:1.1.2": {
+      "imageVariant": 24
+    }
   },
-  "runArgs": ["--network=mysql_net", "--dns=8.8.8.8"]
+  "runArgs": ["--network=ms-infrastructure_default", "--dns=8.8.8.8"]
 }
