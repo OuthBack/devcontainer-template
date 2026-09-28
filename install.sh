@@ -27,6 +27,9 @@ apt -y install fzf
 # Wl-clipboard
 apt -y install wl-clipboard
 
+# Ip route
+apt -y install iproute2
+
 # SSH
 apt -y install openssh-client openssh-server
 cp -r /tmp/host-ssh /root/.ssh
@@ -49,9 +52,17 @@ curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x8
 rm -rf /opt/nvim-linux-x86_64
 tar -C /opt -xzf nvim-linux-x86_64.tar.gz
 
-echo 'export PATH="$PATH:/opt/nvim-linux-x86_64/bin"' >> ~/.zshrc 
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-echo 'eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519' >> ~/.zshrc
+echo '
+eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
+export TUNNEL_HOST="$(ip route | awk '"'"'/default/ {print $3; exit}'"'"')"
+export TUNNEL_USER="$(whoami)"               
+export TUNNEL_SSH_OPTS="-i ~/.ssh/host-ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ServerAliveInterval=15"
+export TUNNEL_EXCLUDE_PORTS="22"
+export TUNNEL_POLL_INTERVAL="2"
+' >> ~/.zshrc
+
 
 git clone https://github.com/OuthBack/neovim-config.git ~/.config/nvim
 git config --global --add safe.directory $(pwd)
@@ -71,3 +82,7 @@ rm nvim-linux-x86_64.tar.gz
 # echo "172.19.0.2 pgadmin" >> /etc/hosts
 # echo "172.18.0.2 mysql" >> /etc/hosts
 
+#
+# colocar no docker do host {
+#  "detachKeys": "ctrl-z,z"
+# }
