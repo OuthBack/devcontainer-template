@@ -165,3 +165,23 @@ setsid nohup bash .devcontainer/port-watch-ssh.sh \
 - O mount `~/.ssh → /tmp/host-ssh` é de leitura e escrita: o root do
   container pode alterar o `authorized_keys` do host. Considere
   `readonly=true` nesse mount, já que o `install.sh` só copia de lá.
+
+## Skill para agentes
+
+`.claude/skills/devcontainer-ops/SKILL.md` (aqui dentro, versionado com o
+template) ensina um agente que roda **no host** a operar este container:
+achar o container pelo label do Dev Containers, mapear caminhos
+host↔container, executar comandos sem perder o `PATH`, escrever arquivos
+pelo lado de dentro, testar portas que chegam ao host pelo túnel, usar
+`GITHUB_TOKEN` em vez da chave com passphrase e onde olhar nos logs. A
+regra central dela é **nunca escrever no host**: toda alteração passa por
+`docker exec`.
+
+É uma skill aninhada — o Claude Code só a carrega depois de tocar algum
+arquivo sob `.devcontainer/`. Para tê-la desde o início da sessão, crie o
+link uma vez na raiz do repositório que usa o template:
+
+```bash
+mkdir -p .claude/skills
+ln -s ../../.devcontainer/.claude/skills/devcontainer-ops .claude/skills/devcontainer-ops
+```

@@ -1,12 +1,9 @@
 // .devcontainer/devcontainer.json
 {
   "image": "debian:stable-slim",
-  "build": {
-    "context": ".."
-  },
   "mounts": [
     "source=${env:HOME}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached,readonly=false",
-    "source=${env:HOME}/.ssh,target=/tmp/host-ssh,type=bind,consistency=cached",
+    "source=${env:HOME}/.ssh,target=/tmp/host-ssh,type=bind,consistency=cached,readonly=true",
     "source=${localWorkspaceFolder}/.git,target=${containerWorkspaceFolder}/.git,type=bind,consistency=cached",
     "source=${env:XDG_RUNTIME_DIR}/${env:WAYLAND_DISPLAY},target=${env:XDG_RUNTIME_DIR}/${env:WAYLAND_DISPLAY},type=bind,consistency=cached"
   ],
@@ -17,13 +14,14 @@
     "COLORTERM": "truecolor",
     "NO_BROWSER": "true",
     "TUNNEL_USER": "${localEnv:USER}",
-    "TUNNEL_SSH_OPTS": "-i /tmp/host-ssh/devcontainer_tunnel -o IdentitiesOnly=yes"
+    "TUNNEL_SSH_OPTS": "-i /tmp/host-ssh/devcontainer_tunnel -o IdentitiesOnly=yes",
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
   },
   "appPort": [],
   "postCreateCommand": [
     "/bin/sh",
     "-c",
-    "{ echo '--- New Run: $(date) ---'; /bin/sh ./.devcontainer/install.sh; } >> ./.devcontainer/postcreate.log 2>&1 || true && grep -qF '_container_rprompt' ~/.zshrc 2>/dev/null || cat >> ~/.zshrc << 'EOF'\n\nfunction _is_in_container() {\n  [[ -n \"$REMOTE_CONTAINERS\" ]] && return 0\n  grep -qE \"docker|container|lxc\" /proc/1/cgroup 2>/dev/null\n}\nfunction _container_prompt() {\n  _is_in_container && echo \"%F{cyan}🐳 devcontainer%f \"\n}\nPROMPT='$(_container_prompt)'\"$PROMPT\"\nalias vim='nvim'\nEOF"
+    "{ echo '--- New Run: $(date) ---'; /bin/sh ./.devcontainer/install.sh; } >> ./.devcontainer/postcreate.log 2>&1 || true && grep -qF '_container_prompt' ~/.zshrc 2>/dev/null || cat >> ~/.zshrc << 'EOF'\n\nfunction _is_in_container() {\n  [[ -n \"$REMOTE_CONTAINERS\" ]] && return 0\n  grep -qE \"docker|container|lxc\" /proc/1/cgroup 2>/dev/null\n}\nfunction _container_prompt() {\n  _is_in_container && echo \"%F{cyan}🐳 devcontainer%f \"\n}\nPROMPT='$(_container_prompt)'\"$PROMPT\"\nalias vim='nvim'\nEOF"
   ],
   "postStartCommand": "{ echo \"--- New Run: $(date) ---\"; } >> ${containerWorkspaceFolder}/.devcontainer/port-watch-ssh.log; setsid nohup bash ${containerWorkspaceFolder}/.devcontainer/port-watch-ssh.sh >> ${containerWorkspaceFolder}/.devcontainer/port-watch-ssh.log 2>&1 &",
   "features": {
@@ -32,5 +30,8 @@
       "imageVariant": 24
     }
   },
-  "runArgs": ["--network=ms-infrastructure_default", "--dns=8.8.8.8"]
+  "runArgs": [
+    "--network=ms-infrastructure_default",
+    "--dns=8.8.8.8"
+  ]
 }

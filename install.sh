@@ -32,13 +32,11 @@ apt -y install iproute2
 
 # SSH
 apt -y install openssh-client openssh-server
-cp -r /tmp/host-ssh /root/.ssh
-cp /tmp/host-ssh/id_ed25519 /root/.ssh/
-cp /tmp/host-ssh/id_rsa /root/.ssh/
-cp /tmp/host-ssh/known_hosts /root/.ssh/
+mkdir -p /root/.ssh
+cp -r /tmp/host-ssh/. /root/.ssh/
 chown -R root:root /root/.ssh
-chmod 700 /root/.ssh 
-chmod 600 /root/.ssh/*
+chmod 700 /root/.ssh
+find /root/.ssh -type f ! -name '*.pub' ! -name 'known_hosts*' -exec chmod 600 {} +
 
 # ZSH
 apt -y install zsh
@@ -48,24 +46,35 @@ chsh -s $(which zsh)
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --skip-chsh --unattended
 
 # Neovim
-curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+curl -fsSL -O https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
 rm -rf /opt/nvim-linux-x86_64
 tar -C /opt -xzf nvim-linux-x86_64.tar.gz
 
-echo '
-eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519
+grep -qF '# >>> devcontainer zshrc >>>' ~/.zshrc 2>/dev/null || cat >> ~/.zshrc <<'ZRC'
+
+# >>> devcontainer zshrc >>>
+# ssh-agent: um por container, socket fixo, sem pedir passphrase ao abrir shell.
+# Carregue a chave sob demanda com `sshkey`.
+export SSH_AUTH_SOCK=/tmp/ssh-agent.sock
+ssh-add -l >/dev/null 2>&1
+if [ $? -eq 2 ]; then          # 2 = nao conseguiu falar com o agent
+  rm -f "$SSH_AUTH_SOCK"
+  ssh-agent -a "$SSH_AUTH_SOCK" >/dev/null 2>&1
+fi
+alias sshkey='ssh-add ~/.ssh/id_ed25519'
+
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
-export TUNNEL_HOST="$(ip route | awk '"'"'/default/ {print $3; exit}'"'"')"
-export TUNNEL_USER="$(whoami)"               
-export TUNNEL_SSH_OPTS="-i ~/.ssh/host-ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ServerAliveInterval=15"
+export TUNNEL_HOST="$(ip route | awk '/default/ {print $3; exit}')"
+export TUNNEL_USER="$(whoami)"
 export TUNNEL_EXCLUDE_PORTS="22"
 export TUNNEL_POLL_INTERVAL="2"
-' >> ~/.zshrc
+# <<< devcontainer zshrc <<<
+ZRC
 
 
 git clone https://github.com/OuthBack/neovim-config.git ~/.config/nvim
-git config --global --add safe.directory $(pwd)
+git config --system --add safe.directory '*'
 
 # NPM
 npm install -g typescript-language-server typescript tree-sitter-cli @google/gemini-cli
