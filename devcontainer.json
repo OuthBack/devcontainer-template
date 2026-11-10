@@ -22,8 +22,11 @@
   ],
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
+    // "version" e a opcao real da feature node; "imageVariant" nao existe aqui
+    // e era silenciosamente ignorada, deixando o nvm instalar "lts/*" — que hoje
+    // resolve para Node 26 e quebra o instalador da feature.
     "ghcr.io/devcontainers/features/node:1.1.2": {
-      "imageVariant": 24
+      "version": "24"
     }
   },
   // Rede do host: o container compartilha o namespace de rede da maquina.
