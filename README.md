@@ -1,187 +1,85 @@
-# Devcontainer — túneis SSH automáticos para o host
+# Devcontainer — rede do host
 
-Este devcontainer sobe, a cada start, o script `port-watch-ssh.sh`, que
-detecta portas novas escutando dentro do container e abre um túnel SSH
-reverso (`ssh -R`) para o host. Resultado: um serviço em `localhost:3000`
-no container fica acessível em `localhost:3000` no host, sem declarar
-`forwardPorts`/`appPort`.
+Este devcontainer roda com `--network=host`: ele **compartilha o namespace de
+rede da máquina**. Não há `forwardPorts`, `appPort`, nem túnel reverso — um
+serviço que escuta em `:3000` dentro do container já está em `localhost:3000`
+no host, porque é literalmente o mesmo socket.
 
 ```
-container                                   host (Linux)
-┌──────────────────────────┐   ssh -R      ┌──────────────────────────┐
-│ app escutando :3000      │ ────────────▶ │ sshd :22                 │
-│ port-watch-ssh.sh (poll) │  172.19.0.1   │ localhost:3000 → túnel   │
+container (namespace de rede do host)      host
+┌──────────────────────────┐               ┌──────────────────────────┐
+│ app escutando :3000      │ ============= │ localhost:3000           │
+│ localhost:5432  ─────────┼──────────────▶│ postgres (bridge, publish)│
 └──────────────────────────┘               └──────────────────────────┘
 ```
 
-## Pré-requisitos no host
+## Consequência que mais causa erro
 
-- Linux com Docker Engine e `openssh-server` (serviço `ssh`) rodando.
-- A variável `USER` definida no ambiente em que o VS Code é aberto (é o
-  usuário SSH usado pelo túnel, via `${localEnv:USER}`).
+**Nome de container não resolve mais.** O devcontainer saiu da rede
+`ms-infrastructure_default`, então `postgres`, `mysql`, `infra-redis` e
+`dynamodb` deixaram de ser hostnames válidos. A infra continua em bridge
+publicando portas no host, então o endereço correto é sempre `localhost`:
 
-## Configuração no host (uma vez)
-
-### 1. Conferir o sshd
-
-```bash
-sudo systemctl status ssh
-sudo sshd -T | grep -Ei 'allowtcpforwarding|permitlisten|listenaddress'
-```
-
-Esperado:
-
-```
-listenaddress [::]:22
-listenaddress 0.0.0.0:22
-allowtcpforwarding yes
-permitlisten any
-```
-
-- `allowtcpforwarding` precisa ser `yes` ou `remote`.
-- `listenaddress` não pode ser só `127.0.0.1` — o container conecta pelo
-  gateway da rede Docker.
-
-### 2. Criar a chave dedicada do túnel
-
-A chave fica no `~/.ssh` do host, que já é montado no container em
-`/tmp/host-ssh` — por isso sobrevive a rebuilds.
-
-```bash
-ssh-keygen -t ed25519 -f ~/.ssh/devcontainer_tunnel -N "" -C devcontainer-tunnel
-echo "restrict,port-forwarding $(cat ~/.ssh/devcontainer_tunnel.pub)" >> ~/.ssh/authorized_keys
-chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys
-```
-
-- **Sem senha** (`-N ""`): o watcher roda em background, sem ninguém para
-  digitá-la.
-- **`restrict,port-forwarding`**: a chave só abre túneis — não dá shell
-  nem executa comandos no host. Se vazar, o estrago fica limitado a isso.
-- Não use a chave pessoal (`id_ed25519`): ela tem senha e daria shell
-  completo no host.
-
-### 3. Firewall (só se houver ufw/nftables ativo)
-
-O container sai pela bridge da rede `ms-infrastructure_default`, não pela
-`docker0`. Descubra a interface e libere a porta 22 nela:
-
-```bash
-BR="br-$(docker network inspect ms-infrastructure_default -f '{{.Id}}' | cut -c1-12)"
-sudo ufw allow in on "$BR" to any port 22 proto tcp
-```
-
-### 4. Rebuild do devcontainer
-
-`containerEnv` só é aplicado no rebuild: **Dev Containers: Rebuild
-Container**.
-
-## Verificação (dentro do container)
-
-```bash
-# watcher rodando?
-pgrep -af port-watch-ssh.sh
-
-# log do watcher (append, uma linha "--- New Run" por start)
-cat .devcontainer/port-watch-ssh.log
-
-# teste manual da conexão: deve ficar parado sem erro (Ctrl+C para sair)
-ssh -i /tmp/host-ssh/devcontainer_tunnel -o IdentitiesOnly=yes -o BatchMode=yes \
-    -N -R 18999:localhost:18999 "$TUNNEL_USER@$(ip route | awk '/default/{print $3; exit}')"
-```
-
-Teste ponta a ponta:
-
-```bash
-# no container
-python3 -m http.server 18780 --bind 127.0.0.1
-# no host (em até ~2s)
-curl http://localhost:18780
-```
-
-## Como funciona
-
-| Comportamento | Detalhe |
+| Serviço | Endereço de dentro do container |
 |---|---|
-| Detecção | Poll em `/proc/net/tcp[6]` a cada `TUNNEL_POLL_INTERVAL` s. |
-| Portas consideradas | Só as que escutam em `0.0.0.0`, `127.0.0.1`, `::` ou `::1` (alcançáveis via `localhost`). O DNS embutido do Docker (`127.0.0.11`) e serviços presos ao IP do container são ignorados. |
-| Porta fechou | O túnel correspondente é encerrado. |
-| Falha do ssh | Backoff por porta: 2s, 4s, 8s… até `TUNNEL_MAX_BACKOFF`. Um túnel que ficou de pé 60s zera o contador. |
-| Instância única | `flock` em `/tmp/port-tunnel-ssh/watcher.lock`: um segundo watcher no mesmo container sai sem fazer nada. |
-| Onde o túnel escuta no host | Só em `localhost` do host (`GatewayPorts no`, padrão do sshd). Outras máquinas da rede não acessam. |
+| PostgreSQL | `localhost:5432` |
+| MySQL (wedding) | `localhost:3306` |
+| Redis | `localhost:6379` |
+| DynamoDB local | `http://localhost:8000` |
+| DynamoDB admin | `http://localhost:8001` |
+| pgAdmin | `http://localhost:5050` |
+| RedisInsight | `http://localhost:5540` |
 
-### Vários containers ao mesmo tempo
+Ao migrar um repo, corrija o `.env` **antes** do rebuild: `DB_HOST`,
+`REDIS_HOST` e `DYNAMODB_ENDPOINT` passam a apontar para `localhost`. IPs
+fixos da rede Docker (`172.19.0.x`) também precisam sair.
 
-Cada túnel abre a porta no `localhost` do host. Se dois containers
-escutam na **mesma porta**, o primeiro a conectar fica com ela; o segundo
-registra `remote port forwarding failed` no log da porta, entra em
-backoff e assume quando o primeiro liberar. Não há quebra, mas não é
-determinístico qual container responde em `localhost:<porta>`. O mesmo
-vale para portas que o próprio host já usa.
+## Portas: colisão é o novo modo de falha
 
-## Variáveis de ambiente
-
-| Variável | Default | Definida em |
-|---|---|---|
-| `TUNNEL_USER` | `whoami` (no container = `root`) | `containerEnv` → `${localEnv:USER}` |
-| `TUNNEL_SSH_OPTS` | vazio | `containerEnv` → chave dedicada + `IdentitiesOnly=yes` |
-| `TUNNEL_HOST` | gateway do `ip route` (hoje `172.19.0.1`), fallback `host.docker.internal` | — |
-| `TUNNEL_EXCLUDE_PORTS` | `22` | — |
-| `TUNNEL_POLL_INTERVAL` | `2` | — |
-| `TUNNEL_MAX_BACKOFF` | `300` | — |
-
-## Operação manual
+Todos os devcontainers dividem o mesmo espaço de portas do host. Dois repos
+tentando subir em `3000` colidem de verdade — o segundo recebe `EADDRINUSE`.
 
 ```bash
-# parar (SIGTERM derruba todos os túneis)
-pkill -TERM -f '^bash .*port-watch-ssh\.sh'
-
-# subir de novo
-setsid nohup bash .devcontainer/port-watch-ssh.sh \
-  >> .devcontainer/port-watch-ssh.log 2>&1 &
+whoport 3000     # no host: quem está na porta, de qual projeto
+whoport          # tabela completa, agrupada por dono
+whoport -c bff   # todas as portas de um projeto
 ```
 
-| Arquivo | Conteúdo |
-|---|---|
-| `.devcontainer/port-watch-ssh.log` | Log do watcher (ignorado pelo git). |
-| `/tmp/port-tunnel-ssh/<porta>.log` | Saída do `ssh` de cada túnel — primeiro lugar a olhar em falhas. |
-| `/tmp/port-tunnel-ssh/<porta>.pid` | PID do `ssh` de cada túnel. |
+O mapa de portas reservadas por repo fica em
+`~/.claude/skills/devcontainer-local/ports.md` (local da máquina, não
+versionado aqui).
 
-## Problemas comuns
-
-| Sintoma (em `<porta>.log` ou no log do watcher) | Causa provável | Ação |
-|---|---|---|
-| `Permission denied (publickey)` | Chave não está no `authorized_keys`, ou permissões erradas em `~/.ssh` | Refazer o passo 2; conferir `chmod 700 ~/.ssh`, `600 authorized_keys` |
-| `TUNNEL_USER=root` no log | `USER` vazio no ambiente do VS Code | Trocar `${localEnv:USER}` pelo usuário fixo no `devcontainer.json` |
-| `Connection timed out` / `refused` | Firewall ou sshd parado | Passos 1 e 3 |
-| `remote port forwarding failed for listen port N` | Porta já ocupada no host (outro container ou serviço do host), ou `N < 1024` sem root | Liberar a porta no host ou mudar a porta do serviço |
-| Nenhum túnel abre | Serviço escuta só no IP do container | Fazer o serviço escutar em `0.0.0.0` ou `127.0.0.1` |
-| Watcher não está rodando após start | Processo morreu com o fim do `postStartCommand` | Ver `.devcontainer/port-watch-ssh.log`; subir manualmente e reportar |
+De **dentro** do container, `ss -ltn` mostra que a porta está ocupada, mas não
+quem é o dono: o PID pertence a outro namespace. Nesse caso, rode `whoport` no
+host.
 
 ## Segurança
 
-- O túnel não expõe portas na internet nem na rede local — só no
-  `localhost` do host.
-- A chave dedicada é limitada a port-forwarding (`restrict,port-forwarding`).
-- O mount `~/.ssh → /tmp/host-ssh` é de leitura e escrita: o root do
-  container pode alterar o `authorized_keys` do host. Considere
-  `readonly=true` nesse mount, já que o `install.sh` só copia de lá.
+`--network=host` remove o isolamento de rede do container: os processos bindam
+portas do host diretamente, enxergam serviços do host em `localhost` (inclusive
+o `sshd` em `:22`) e alcançam a LAN sem tradução. É um trade-off aceito
+conscientemente para máquina de desenvolvimento.
+
+O mount `~/.ssh → /tmp/host-ssh` é **readonly**, e o `install.sh` copia de lá
+apenas `id_ed25519`, `id_ed25519.pub` e `known_hosts` — nunca o diretório
+inteiro.
+
+## Arquivos
+
+| Arquivo | Conteúdo |
+|---|---|
+| `devcontainer.json` | Imagem, mounts, features, `runArgs` |
+| `install.sh` | Provisionamento do container (roda no `postCreateCommand`) |
+| `postcreate.log` | Saída do `install.sh`, append por rebuild (ignorado pelo git) |
 
 ## Skill para agentes
 
-`.claude/skills/devcontainer-ops/SKILL.md` (aqui dentro, versionado com o
-template) ensina um agente que roda **no host** a operar este container:
-achar o container pelo label do Dev Containers, mapear caminhos
-host↔container, executar comandos sem perder o `PATH`, escrever arquivos
-pelo lado de dentro, testar portas que chegam ao host pelo túnel, usar
-`GITHUB_TOKEN` em vez da chave com passphrase e onde olhar nos logs. A
-regra central dela é **nunca escrever no host**: toda alteração passa por
-`docker exec`.
+A operação deste container por agentes (dos dois lados: host e dentro) está em
+`~/.claude/skills/devcontainer-local/`, fora deste repositório — ela descreve a
+máquina, não o template.
 
-É uma skill aninhada — o Claude Code só a carrega depois de tocar algum
-arquivo sob `.devcontainer/`. Para tê-la desde o início da sessão, crie o
-link uma vez na raiz do repositório que usa o template:
+## Este diretório é um repositório próprio
 
-```bash
-mkdir -p .claude/skills
-ln -s ../../.devcontainer/.claude/skills/devcontainer-ops .claude/skills/devcontainer-ops
-```
+`OuthBack/devcontainer-template`, branch `nodejs`, compartilhado por vários
+projetos. Commit aqui **não** é commit do projeto. Para levar a mudança a outro
+repo: corrija o `.env` dele, `git -C .devcontainer pull`, rebuild.
